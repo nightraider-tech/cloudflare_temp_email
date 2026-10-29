@@ -3,6 +3,7 @@ import type {
     CredentialDeviceType,
     Base64URLString,
 } from '@simplewebauthn/server';
+import type { FilterExpression } from '../utils/filter';
 
 export type Passkey = {
     id: Base64URLString;
@@ -26,12 +27,17 @@ export class AdminWebhookSettings {
 export type WebhookMail = {
     id: string;
     url?: string;
+    attachments?: { filename: string, mimeType: string, url: string }[];
     from: string;
     to: string;
     subject: string;
     raw: string;
     parsedText: string;
     parsedHtml: string;
+    aiExtract: ExtractResult | null;
+    aiExtractType: string;
+    aiExtractResult: string;
+    aiExtractResultText: string;
 }
 
 export type CustomSqlCleanup = {
@@ -113,9 +119,19 @@ export class UserSettings {
         this.verifyMailSender = verifyMailSender;
         this.enableMailAllowList = enableMailAllowList;
         this.mailAllowList = mailAllowList;
-        this.maxAddressCount = maxAddressCount || 5;
+        this.maxAddressCount = (typeof maxAddressCount === "number" && maxAddressCount >= 0) ? maxAddressCount : 5;
         this.enableEmailCheckRegex = enableEmailCheckRegex;
         this.emailCheckRegex = emailCheckRegex;
+    }
+}
+
+export class AddressCreationSettings {
+
+    enableSubdomainMatch: boolean | undefined;
+
+    constructor(data: AddressCreationSettings | undefined | null) {
+        const { enableSubdomainMatch } = data || {};
+        this.enableSubdomainMatch = enableSubdomainMatch;
     }
 }
 
@@ -131,6 +147,7 @@ export class UserInfo {
 }
 
 export class WebhookSettings {
+    filter?: FilterExpression | null;
     enabled: boolean = false
     url: string = ''
     method: string = 'POST'
@@ -146,6 +163,9 @@ export class WebhookSettings {
         "raw": "${raw}",
         "parsedText": "${parsedText}",
         "parsedHtml": "${parsedHtml}",
+        "aiExtractType": "${aiExtractType}",
+        "aiExtractResult": "${aiExtractResult}",
+        "aiExtractResultText": "${aiExtractResultText}",
     }, null, 2)
 }
 
@@ -174,9 +194,34 @@ export type EmailRuleSettings = {
     emailForwardingList: SubdomainForwardAddressList[]
 }
 
+export type SendMailLimitConfig = {
+    dailyEnabled: boolean;
+    monthlyEnabled: boolean;
+    dailyLimit: number | null;
+    monthlyLimit: number | null;
+}
+
 export type RoleConfig = {
     maxAddressCount?: number;
     // future configs can be added here
 }
 
 export type RoleAddressConfig = Record<string, RoleConfig>;
+
+export type RawMailRow = {
+    id: number;
+    message_id?: string;
+    source?: string;
+    address?: string;
+    raw?: string;
+    raw_blob?: unknown;
+    metadata?: string;
+    is_unread?: number | null;
+    created_at?: string;
+}
+
+export type ExtractResult = {
+    type: 'auth_code' | 'auth_link' | 'service_link' | 'subscription_link' | 'other_link' | 'none';
+    result: string;
+    result_text: string;
+}
